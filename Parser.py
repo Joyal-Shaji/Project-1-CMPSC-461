@@ -100,6 +100,28 @@ class Parser:
 
     def parse_statement(self) -> Union[Assign, Put, If, WhileLoop, ForLoop]:
         # Implementation Required
-        pass
+        current_type = self.current_token()[0]
+        if current_type == 'ID':    #find out what statement is being parsed by looking at the first token
+            return self.parse_assign_statement()
+        elif current_type == 'PUT':
+            return self.parse_put_statement()
+        elif current_type == 'IF':
+            return self.parse_if_statement()
+        elif current_type == 'WHILE':
+            return self.parse_while_statement()
+        elif current_type == 'FOR':
+            return self.parse_for_statement()
+        else:
+            raise RuntimeError(f"Unexpected token: {current_type}")
 
     # More parsing methods as needed
+
+    def parse_assign_statement(self):
+
+    def parse_put_statement(self):
+
+    def parse_while_statement(self):
+
+    def parse_for_statement(self):
+
+    def parse_if_statement(self):
