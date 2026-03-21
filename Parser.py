@@ -83,10 +83,20 @@ class Parser:
 
     def parse_block(self) -> Block:
         # Implementation Required
-        #testing commits to github
-        #testing to see if it commits to just test branch
-        #testing again
-        pass
+        statement_list = []
+        is_parsing_block = True #Trying to make sure that it doesnt parse past the block
+        while is_parsing_block == True:
+            current_type = self.current_token()[0]
+            if current_type == 'EOF':
+                is_parsing_block = False
+            elif current_type == 'END':
+                is_parsing_block = False
+            elif current_type == 'ELSE':
+                is_parsing_block = False
+            else:   # if the type of statement is not eof end or else then it is a statement so add it to the list
+                statement = self.parse_statement()
+                statement_list.append(statement)
+        return Block(statement_list)    #return a block node of the list of statements
 
     def parse_statement(self) -> Union[Assign, Put, If, WhileLoop, ForLoop]:
         # Implementation Required
