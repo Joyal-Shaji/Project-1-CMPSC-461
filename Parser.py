@@ -194,7 +194,64 @@ class Parser:
         return And(and_pieces)
 
     def parse_compare_level(self):
-        pass
+        #Checking for the comparison operators like < > = /= >= <=
+        left_side = self.parse_add_sub_level()
+        current_token_type = self.current_token()[0]    #checking waht the token is
+        comparison_operators = ("EQ", "NEQ", "LT", "GT", "LTE", "GTE")
+        if current_token_type in comparison_operators:  # check if the current token is a comparison op
+            operator_token = self.current_token()
+            self.advance()  #skip the token and get the right side of expression
+            right_side = self.parse_add_sub_level()
+            operator_symbol = operator_token[1]
+            return Comparison(left_side, operator_symbol, right_side)   #return both sides of expression and operator
+        return left_side    #if no comparison operator just return the left side
+
+    def parse_add_sub_level(self):
+        math_chunks = [self.parse_mult_div_level()] #checking for + and -
+        symbols = []
+        while self.current_token()[0] in ("PLUS", "MINUS"):
+            operator_symbol = self.current_token()[1]
+            symbols.append(operator_symbol) # get the + or - and add to symbols list
+            self.advance()
+            next_chunk = self.parse_mult_div_level()    #get the next chunk of math for mult and div
+            math_chunks.append(next_chunk)
+        if len(symbols) == 0:   # if there are no + or - symbols then just return the chunk
+            return math_chunks[0]
+        return Term(math_chunks, symbols)
+
+    def parse_mult_div_level(self):
+        math_chunks = [self.parse_basic_values()]   #checking for the *, / and mod
+        symbols = []
+        while self.current_token()[0] in ("MUL", "DIV", "MOD"):
+            operator_symbol = self.current_token()[1]   # if the current token is one of the mul div mod ops
+            symbols.append(operator_symbol) # add to operator list and skip operator
+            self.advance()
+            next_chunk = self.parse_basic_values()  # Parse the raw expression
+            math_chunks.append(next_chunk)
+        if len(symbols) == 0:   # if there are no mult or div or mod
+            return math_chunks[0]
+        return Factor(math_chunks, symbols)
+
+    def parse_basic_values(self):
+        current_token_type = self.current_token()[0]    #parsing int booleans id and ()
+        token_value = self.current_token()[1]
+        if current_token_type == "INTEGER":
+            self.advance()
+            return Integer(token_value)
+        elif current_token_type == "TRUE" or current_token_type == "FALSE":
+            self.advance()
+            return Boolean(token_value)
+        elif current_token_type == "ID":
+            self.advance()
+            return Identifier(token_value)
+        elif current_token_type == "LPAREN":
+            self.advance()
+            inside_math = self.parse_expression()   #after seeing a ( start parsing from the begining
+            self.expect("RPAREN")
+            return inside_math
+        else:
+            raise RuntimeError(f"Unexpected token"
+                               f"(expected number, variable, boolean, or '(' ) got: {current_token_type}")
 
         
     
