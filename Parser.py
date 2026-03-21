@@ -117,11 +117,84 @@ class Parser:
     # More parsing methods as needed
 
     def parse_assign_statement(self):
+        id_token = self.expect("ID")
+        self.expect("ASSIGN")
+        expression = self.parse_expression()
+        self.expect("SEMICOLON")
+        id_node = Identifier(id_token[1])   #Create identifier node and assign that node
+        assign_node = Assign(id_node, expression)
+        return assign_node
 
     def parse_put_statement(self):
+        self.expect("PUT")  # checking the format of the put statement Put(expression);
+        self.expect("LPAREN")
+        expr_to_put = self.parse_expression()
+        self.expect("RPAREN")
+        self.expect("SEMICOLON")
+        return Put(expr_to_put)
 
     def parse_while_statement(self):
+        self.expect("WHILE")
+        cond_expr = self.parse_expression()
+        self.expect("LOOP")
+        loop_body = self.parse_block()
+        self.expect("END")
+        self.expect("LOOP")
+        self.expect("SEMICOLON")
+        return WhileLoop(cond_expr, loop_body)  # if it finds all the required elements return the values
 
     def parse_for_statement(self):
+        self.expect("FOR")  #checking the format of for statements
+        id_tok = self.expect("ID")
+        self.expect("IN")
+        start_expr = self.parse_expression()
+        self.expect("DOTDOT")
+        end_expr = self.parse_expression()
+        self.expect("LOOP")
+        loop_body = self.parse_block()
+        self.expect("END")
+        self.expect("LOOP")
+        self.expect("SEMICOLON")
+        id_node = Identifier(id_tok[1])
+        return ForLoop(id_node, start_expr, end_expr, loop_body)
 
     def parse_if_statement(self):
+        self.expect("IF")
+        condition_expr = self.parse_expression()
+        self.expect("THEN")
+        then_block = self.parse_block()
+        else_block = None  # Default else block to None b/c it is optional
+        if self.current_token()[0] == "ELSE":
+            self.advance()
+            else_block = self.parse_block() # if there is an else block then parse it
+        self.expect("END")
+        self.expect("IF")
+        self.expect("SEMICOLON")
+        if_node = If(condition_expr, then_block, else_block)
+        return if_node
+
+    def parse_expression(self):
+        or_pieces = [self.parse_and_level()]
+        while self.current_token()[0] == "OR":  #if the current token is or skip it and get an 'and' token b/c or is
+            self.advance()                      #lower precedence
+            next_piece = self.parse_and_level()
+            or_pieces.append(next_piece)
+        if len(or_pieces) == 1: # if there is only one peice then it isnt an or operation
+            return or_pieces[0]
+        return Or(or_pieces)    #if there are more than 1 peices wrap it in an or AST node
+
+    def parse_and_level(self):
+        and_pieces = [self.parse_compare_level()]
+        while self.current_token()[0] == "AND": #checking if there are and tokens connected
+            self.advance()  #if there is skip it
+            next_piece = self.parse_compare_level()
+            and_pieces.append(next_piece)
+        if len(and_pieces) == 1:    #if it is only one peice of and token skip it
+            return and_pieces[0]
+        return And(and_pieces)
+
+    def parse_compare_level(self):
+        pass
+
+        
+    
