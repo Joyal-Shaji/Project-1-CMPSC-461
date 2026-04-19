@@ -21,6 +21,7 @@ class Lexer:
         self.token_specs = [
             ("ASSIGN", r":="),
             ("SEMICOLON", r";"),
+            ("COLON",r":"),
             # Fill in more token specifications here
             ("DOTDOT", r"\.\."), ("EQ", r"="),("NEQ", r"/="),("LTE", r"<="),("GTE", r">="),("LT", r"<"),("GT", r">"),
             ("PLUS", r"\+"),("MINUS", r"-"),("MUL", r"\*"),("DIV", r"/"),("LPAREN", r"\("),("RPAREN", r"\)"),
@@ -28,6 +29,7 @@ class Lexer:
             ("WHILE", r"\bwhile\b"),("LOOP", r"\bloop\b"),("FOR", r"\bfor\b"),("IN", r"\bin\b"),("OR", r"\bor\b"),
             ("AND", r"\band\b"),("MOD", r"\bmod\b"),("TRUE", r"\bTrue\b"),("FALSE", r"\bFalse\b"),
             ("ID", r"[a-zA-Z_][a-zA-Z0-9_]*"),("INTEGER", r"[0-9]+"), ("SKIP", r"[ \t\n\r]+"), ("MISMATCH", r"."),
+            ("VAR", r"\bvar\b"),("INT_TYPE",r"\bInteger\b"),("BOOL_TYPE",r"\bBoolean\b"),
             
         ]
         self.token_regex = re.compile(
@@ -56,6 +58,7 @@ class Parser:
     def __init__(self, tokens: List[Tuple[str, str]]):
         self.tokens = tokens
         self.pos = 0  # Current position in the token list
+        self.symbol_table = [{}]    #list of dicts for keeping scope
 
     def current_token(self) -> Tuple[str, str]:
         # Returns the current token without consuming it
@@ -252,6 +255,13 @@ class Parser:
         else:
             raise RuntimeError(f"Unexpected token"
                                f"(expected number, variable, boolean, or '(' ) got: {current_token_type}")
+
+    def get_var_type(self, var_name):
+        for i in range(len(self.symbol_table)-1, -1, -1):   #iterating through the symbol table in reverse to get most
+            scope = self.symbol_table[i]                    #recently declared variable with same name in scope
+            if var_name in scope:   #checking if the variable is in the current scope
+                return scope[var_name]
+        return None #if no variable was found returning none
 
         
     
