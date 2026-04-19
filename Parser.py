@@ -269,5 +269,6 @@ class Parser:
                 return scope[var_name]
         return None #if no variable was found returning none
 
-        
+        # testing idk why my github broken bruh
+    #commiting random stuff
     
