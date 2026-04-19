@@ -1,5 +1,4 @@
 import sys
-
 from ASTNodeDefs import *
 from typing import List, Tuple, Union
 import re
