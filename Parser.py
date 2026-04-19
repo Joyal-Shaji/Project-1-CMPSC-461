@@ -1,3 +1,5 @@
+import sys
+
 from ASTNodeDefs import *
 from typing import List, Tuple, Union
 import re
@@ -80,12 +82,16 @@ class Parser:
             )
 
     def parse(self) -> ASTNode:
-        block = self.parse_block()
-        self.expect("EOF")
-        return block
+        try:    #wrapping the parser in a try except block to catch errors and return Invalid if it finds one
+            block = self.parse_block()
+            self.expect("EOF")
+            return block
+        except Exception as e:
+            print("Invalid")
+            sys.exit(0)
 
     def parse_block(self) -> Block:
-        # Implementation Required
+        self.symbol_table.append({})    #in a new block so push a new dictionary onto the scope stack
         statement_list = []
         is_parsing_block = True #Trying to make sure that it doesnt parse past the block
         while is_parsing_block == True:
@@ -99,6 +105,7 @@ class Parser:
             else:   # if the type of statement is not eof end or else then it is a statement so add it to the list
                 statement = self.parse_statement()
                 statement_list.append(statement)
+        self.symbol_table.pop() #leaving the scope so destroy variables and scope
         return Block(statement_list)    #return a block node of the list of statements
 
     def parse_statement(self) -> Union[Assign, Put, If, WhileLoop, ForLoop]:
