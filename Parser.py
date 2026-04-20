@@ -246,34 +246,48 @@ class Parser:
         or_pieces = [self.parse_and_level()]
         while self.current_token()[0] == "OR":  #if the current token is or skip it and get an 'and' token b/c or is
             self.advance()                      #lower precedence
-            next_piece = self.parse_and_level()
-            or_pieces.append(next_piece)
+            or_pieces.append(self.parse_and_level())
+        for piece in or_pieces: #making sure that the or uses a boolean
+            if piece[1] != 'Boolean':
+                raise RuntimeError("Operator must be Boolean")
         if len(or_pieces) == 1: # if there is only one peice then it isnt an or operation
             return or_pieces[0]
-        return Or(or_pieces)    #if there are more than 1 peices wrap it in an or AST node
+        nodes_only = []
+        for p in or_pieces: nodes_only.append(p[0])
+        return Or(nodes_only), 'Boolean'    #return the boolean value
 
     def parse_and_level(self):
         and_pieces = [self.parse_compare_level()]
         while self.current_token()[0] == "AND": #checking if there are and tokens connected
             self.advance()  #if there is skip it
-            next_piece = self.parse_compare_level()
-            and_pieces.append(next_piece)
+            and_pieces.append(self.parse_compare_level())
+        for piece in and_pieces:
+            if piece[1] != 'Boolean':   #making sure that it is a boolean
+                raise RuntimeError("Operator must be a Boolean")
         if len(and_pieces) == 1:    #if it is only one peice of and token skip it
             return and_pieces[0]
-        return And(and_pieces)
+        nodes_only = []
+        for p in and_pieces: nodes_only.append(p[0])
+        return And(and_pieces), 'Boolean'
 
     def parse_compare_level(self):
         #Checking for the comparison operators like < > = /= >= <=
-        left_side = self.parse_add_sub_level()
-        current_token_type = self.current_token()[0]    #checking waht the token is
+        left_side_tuple = self.parse_add_sub_level()    #parse left side
+        current_token_type = self.current_token()[0]
         comparison_operators = ("EQ", "NEQ", "LT", "GT", "LTE", "GTE")
-        if current_token_type in comparison_operators:  # check if the current token is a comparison op
+        if current_token_type in comparison_operators:  #checking if the operator is a comparison operator
             operator_token = self.current_token()
-            self.advance()  #skip the token and get the right side of expression
-            right_side = self.parse_add_sub_level()
+            self.advance()
+            right_side_tuple = self.parse_add_sub_level()   #parse the right side
+            left_node = left_side_tuple[0]
+            left_type = left_side_tuple[1]
+            right_node = right_side_tuple[0]
+            right_type = right_side_tuple[1]
+            if left_type != 'Integer' or right_type != 'Integer':   #making sure that both side are integers-
+                raise RuntimeError("Comparison operators needs int operands")   #-for comparison
             operator_symbol = operator_token[1]
-            return Comparison(left_side, operator_symbol, right_side)   #return both sides of expression and operator
-        return left_side    #if no comparison operator just return the left side
+            return Comparison(left_node, operator_symbol, right_node), 'Boolean'
+        return left_side_tuple
 
     def parse_add_sub_level(self):
         math_chunks = [self.parse_mult_div_level()] #checking for + and -
@@ -282,11 +296,15 @@ class Parser:
             operator_symbol = self.current_token()[1]
             symbols.append(operator_symbol) # get the + or - and add to symbols list
             self.advance()
-            next_chunk = self.parse_mult_div_level()    #get the next chunk of math for mult and div
-            math_chunks.append(next_chunk)
+            math_chunks.append(self.parse_mult_div_level())    #get the next chunk of math for mult and div
         if len(symbols) == 0:   # if there are no + or - symbols then just return the chunk
             return math_chunks[0]
-        return Term(math_chunks, symbols)
+        nodes_only = []
+        for chunk in math_chunks:
+            if chunk[1] != 'Integer':   #making sure that the operands are integers in add and sub
+                raise RuntimeError("And and sub needs int operands")
+            nodes_only.append(chunk[0])
+        return Term(math_chunks, symbols), 'Integer'
 
     def parse_mult_div_level(self):
         math_chunks = [self.parse_basic_values()]   #checking for the *, / and mod
@@ -295,24 +313,31 @@ class Parser:
             operator_symbol = self.current_token()[1]   # if the current token is one of the mul div mod ops
             symbols.append(operator_symbol) # add to operator list and skip operator
             self.advance()
-            next_chunk = self.parse_basic_values()  # Parse the raw expression
-            math_chunks.append(next_chunk)
+            math_chunks.append(self.parse_basic_values())  # Parse the raw expression
         if len(symbols) == 0:   # if there are no mult or div or mod
             return math_chunks[0]
-        return Factor(math_chunks, symbols)
+        nodes_only = []
+        for chunk in math_chunks:   #checking that the opereands are integers
+            if chunk[1] != 'Integer':
+                raise RuntimeError("Mult and div needs int operands")
+            nodes_only.append(chunk[0])
+        return Factor(math_chunks, symbols), 'Integer'
 
     def parse_basic_values(self):
         current_token_type = self.current_token()[0]    #parsing int booleans id and ()
         token_value = self.current_token()[1]
         if current_token_type == "INTEGER":
             self.advance()
-            return Integer(token_value)
+            return Integer(token_value),'Integer'
         elif current_token_type == "TRUE" or current_token_type == "FALSE":
             self.advance()
-            return Boolean(token_value)
+            return Boolean(token_value),'Boolean'
         elif current_token_type == "ID":
             self.advance()
-            return Identifier(token_value)
+            var_type = self.get_var_type(token_value)
+            if var_type is None:
+                raise RuntimeError(f"Variable {token_value} is not defined")
+            return Identifier(token_value), var_type
         elif current_token_type == "LPAREN":
             self.advance()
             inside_math = self.parse_expression()   #after seeing a ( start parsing from the begining
@@ -320,7 +345,7 @@ class Parser:
             return inside_math
         else:
             raise RuntimeError(f"Unexpected token"
-                               f"(expected number, variable, boolean, or '(' ) got: {current_token_type}")
+                               f"(expected: number, variable, boolean, or '(' ) got: {current_token_type}")
 
     def get_var_type(self, var_name):
         for i in range(len(self.symbol_table)-1, -1, -1):   #iterating through the symbol table in reverse to get most
