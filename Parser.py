@@ -1,4 +1,3 @@
-import sys
 from ASTNodeDefs import *
 from typing import List, Tuple, Union
 import re
@@ -29,8 +28,8 @@ class Lexer:
             ("PUT", r"\bPut\b"),("IF", r"\bif\b"),("THEN", r"\bthen\b"),("ELSE", r"\belse\b"),("END", r"\bend\b"),
             ("WHILE", r"\bwhile\b"),("LOOP", r"\bloop\b"),("FOR", r"\bfor\b"),("IN", r"\bin\b"),("OR", r"\bor\b"),
             ("AND", r"\band\b"),("MOD", r"\bmod\b"),("TRUE", r"\bTrue\b"),("FALSE", r"\bFalse\b"),
+            ("VAR", r"\bvar\b"), ("INT_TYPE", r"\bInteger\b"), ("BOOL_TYPE", r"\bBoolean\b"),
             ("ID", r"[a-zA-Z_][a-zA-Z0-9_]*"),("INTEGER", r"[0-9]+"), ("SKIP", r"[ \t\n\r]+"), ("MISMATCH", r"."),
-            ("VAR", r"\bvar\b"),("INT_TYPE",r"\bInteger\b"),("BOOL_TYPE",r"\bBoolean\b"),
             
         ]
         self.token_regex = re.compile(
@@ -86,8 +85,7 @@ class Parser:
             self.expect("EOF")
             return block
         except Exception as e:
-            print("Invalid")
-            sys.exit(0)
+            return Error()
 
     def parse_block(self) -> Block:
         self.symbol_table.append({})    #in a new block so push a new dictionary onto the scope stack
@@ -131,7 +129,7 @@ class Parser:
         self.expect("VAR")  #checking for 'var'
         id_token = self.expect("ID")    # <id>
         self.expect("COLON")    # :
-        type_token = self.parse_expression()    #checking which type it is
+        type_token = self.current_token()[0]    #checking which type it is
         if type_token == "INT_TYPE":
             decl_type = "Integer"
             self.advance()
@@ -155,7 +153,8 @@ class Parser:
                 raise RuntimeError("Type mismatch in declaration")
         self.expect("SEMICOLON")
         id_node = Identifier(var_name)
-        return Decl(id_node, decl_type, expr_node)
+        decl_type_node = Type(decl_type)
+        return Decl(id_node, decl_type_node, expr_node)
 
 
     def parse_assign_statement(self):
@@ -247,11 +246,11 @@ class Parser:
         while self.current_token()[0] == "OR":  #if the current token is or skip it and get an 'and' token b/c or is
             self.advance()                      #lower precedence
             or_pieces.append(self.parse_and_level())
+        if len(or_pieces) == 1: # if there is only one peice then it isnt an or operation
+            return or_pieces[0]
         for piece in or_pieces: #making sure that the or uses a boolean
             if piece[1] != 'Boolean':
                 raise RuntimeError("Operator must be Boolean")
-        if len(or_pieces) == 1: # if there is only one peice then it isnt an or operation
-            return or_pieces[0]
         nodes_only = []
         for p in or_pieces: nodes_only.append(p[0])
         return Or(nodes_only), 'Boolean'    #return the boolean value
@@ -261,14 +260,14 @@ class Parser:
         while self.current_token()[0] == "AND": #checking if there are and tokens connected
             self.advance()  #if there is skip it
             and_pieces.append(self.parse_compare_level())
+        if len(and_pieces) == 1:    #if it is only one peice of and token skip it
+            return and_pieces[0]
         for piece in and_pieces:
             if piece[1] != 'Boolean':   #making sure that it is a boolean
                 raise RuntimeError("Operator must be a Boolean")
-        if len(and_pieces) == 1:    #if it is only one peice of and token skip it
-            return and_pieces[0]
         nodes_only = []
         for p in and_pieces: nodes_only.append(p[0])
-        return And(and_pieces), 'Boolean'
+        return And(nodes_only), 'Boolean'
 
     def parse_compare_level(self):
         #Checking for the comparison operators like < > = /= >= <=
@@ -304,7 +303,7 @@ class Parser:
             if chunk[1] != 'Integer':   #making sure that the operands are integers in add and sub
                 raise RuntimeError("And and sub needs int operands")
             nodes_only.append(chunk[0])
-        return Term(math_chunks, symbols), 'Integer'
+        return Term(nodes_only, symbols), 'Integer'
 
     def parse_mult_div_level(self):
         math_chunks = [self.parse_basic_values()]   #checking for the *, / and mod
@@ -321,7 +320,7 @@ class Parser:
             if chunk[1] != 'Integer':
                 raise RuntimeError("Mult and div needs int operands")
             nodes_only.append(chunk[0])
-        return Factor(math_chunks, symbols), 'Integer'
+        return Factor(nodes_only, symbols), 'Integer'
 
     def parse_basic_values(self):
         current_token_type = self.current_token()[0]    #parsing int booleans id and ()
@@ -353,8 +352,3 @@ class Parser:
             if var_name in scope:   #checking if the variable is in the current scope
                 return scope[var_name]
         return None #if no variable was found returning none
-
-        # testing idk why my github broken bruh
-    #commiting random stuff
-    #test again
-    
