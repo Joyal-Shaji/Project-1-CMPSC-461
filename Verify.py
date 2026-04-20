@@ -7,7 +7,7 @@ class Verifier:
     def run_test(self, test_name, test_input, expected_output):
         """
         This function runs the lexer and parser on the test input,
-        compares the AST with the expected output.
+        compares the AST with the expected output or the error message.
         Returns True if the test passes, False otherwise.
         """
         print(f"--- Running {test_name} ---")
@@ -31,7 +31,7 @@ class Verifier:
                 return True
             else:
                 print(f"{test_name} failed.\n")
-                print("Wrong AST:")
+                print("Wrong answer:")
                 print(ast_string_clean)
                 return False
         except Exception as e:
@@ -62,6 +62,9 @@ if __name__ == "__main__":
         ("Test Case 10", Test.test_input_10, Test.expected_output_10),
         ("Test Case 11", Test.test_input_11, Test.expected_output_11),
         ("Test Case 12", Test.test_input_12, Test.expected_output_12),
+        ("Test Case 13", Test.test_input_13, Test.expected_output_13),
+        ("Test Case 14", Test.test_input_14, Test.expected_output_14),
+        ("Test Case 15", Test.test_input_15, Test.expected_output_15),
     ]
 
     # Run each test case

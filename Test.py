@@ -1,212 +1,295 @@
 # The spaces in the following expected outputs are just for readability.
 # They will be ignored during comparison.
 
-# Test Case 1: Basic Statements of Assignment and Put
+# Test Case 1: Declaration and Assignment
 test_input_1 = """
-x := 123;
-y_:=False;
-forever :=y;
-Put(forever);Put(01);
-
+var x : Integer;
+var y : Boolean := False;
+var variable :Boolean;
+Put(variable);
+var Booleannn : Boolean := True;
 """
 expected_output_1 = """
 Block([
-    Assign(Identifier(x),Integer(123)),
-    Assign(Identifier(y_),Boolean(False)),
-    Assign(Identifier(forever),Identifier(y)),
-    Put(Identifier(forever)),
-    Put(Integer(01))
+Decl(Identifier(x),Type(Integer),None),
+Decl(Identifier(y),Type(Boolean),Boolean(False)),
+Decl(Identifier(variable),Type(Boolean),None),
+Put(Identifier(variable)),
+Decl(Identifier(Booleannn),Type(Boolean),Boolean(True))
 ])
 """
 
-# Test Case 2: If Statement
+# Test Case 2: Declaration and Assignment
 test_input_2 = """
-if x then
-    y := 10;
-end if;
+var x : Integer := True;
 """
 expected_output_2 = """
-Block([
-    If(Identifier(x),
-        Block([Assign(Identifier(y),Integer(10))]),
-        None
-    )
-])
+Invalid
 """
 
-# Test Case 3: If-Else Statement
+# Test Case 3: Declaration and Assignment
 test_input_3 = """
-if y then
-    z := 10;
-else
-    z := 20;
-    x := y;
-end if;
+var x : Integer;
+var x : Boolean;
 """
 expected_output_3 = """
-Block([
-    If(Identifier(y),
-        Block([Assign(Identifier(z),Integer(10))]),
-        Block([Assign(Identifier(z),Integer(20)),Assign(Identifier(x),Identifier(y))])
-    )
-])
+Invalid
 """
 
-# Test Case 4: While Loop
+# Test Case 4: scoping
 test_input_4 = """
-while False loop
-    Put(0);
+var x : Integer := 10;
+while x > 0 loop
+    var y : Boolean := True;
+    Put(x);
+    Put(y);
 end loop;
 """
 expected_output_4 = """
 Block([
-    WhileLoop(Boolean(False),
-        Block([Put(Integer(0))])
+    Decl(Identifier(x),Type(Integer),Integer(10)),
+    WhileLoop(Comparison(Identifier(x),>,Integer(0)),
+        Block([
+            Decl(Identifier(y),Type(Boolean),Boolean(True)),
+            Put(Identifier(x)),
+            Put(Identifier(y))
+        ])
     )
 ])
 """
 
-# Test Case 5: While Loop
+# Test Case 5: scoping
 test_input_5 = """
-while x loop
+var x : Integer;
+if x > 1 then
     Put(x);
+else
     x := x - 1;
-    while x + y loop
-        Put(y);
-        y := y - 1;
-    end loop;
-end loop;
+end if;
 """
 expected_output_5 = """
 Block([
-    WhileLoop(Identifier(x),
+    Decl(Identifier(x),Type(Integer),None),
+    If(Comparison(Identifier(x),>,Integer(1)),
+        Block([Put(Identifier(x))]),
         Block([
-            Put(Identifier(x)),
-            Assign(Identifier(x),Term([Identifier(x),-,Integer(1)])),
-            WhileLoop(Term([Identifier(x),+,Identifier(y)]),
-                Block([
-                    Put(Identifier(y)),
-                    Assign(Identifier(y),Term([Identifier(y),-,Integer(1)]))
-                ])
-            )
+            Assign(Identifier(x),Term([Identifier(x),-,Integer(1)]))
         ])
     )
 ])
 """
 
-# Test Case 6: While Loop
+# Test Case 6: scoping
 test_input_6 = """
-while False loop
+var x : Boolean := False;
+while x loop
+    var x : Integer := 10;
+    x := x - 1;
+    Put(x);
 end loop;
+x := True;
 """
 expected_output_6 = """
 Block([
-    WhileLoop(Boolean(False),
-        Block([])
-    )
+    Decl(Identifier(x),Type(Boolean),Boolean(False)),
+    WhileLoop(Identifier(x),
+        Block([
+            Decl(Identifier(x),Type(Integer),Integer(10)),
+            Assign(Identifier(x),Term([Identifier(x),-,Integer(1)])),
+            Put(Identifier(x))
+        ])
+    ),
+    Assign(Identifier(x),Boolean(True))
 ])
 """
 
-# Test Case 7: For Loop
+# Test Case 7: scoping
 test_input_7 = """
-for i in 1 .. 5 loop
-    Put(i);
+while False loop
+    var x : Integer;
 end loop;
+x := 5;
 """
 expected_output_7 = """
+Invalid
+"""
+
+# Test Case 8: scoping
+test_input_8 = """
+if True then
+    var i : Integer;
+    i := 1;
+else
+    var i : Boolean;
+    i := True;
+end if;
+"""
+expected_output_8 = """
 Block([
-    ForLoop(Identifier(i),Integer(1),Integer(5),
+    If(Boolean(True),
         Block([
-            Put(Identifier(i))
+            Decl(Identifier(i),Type(Integer),None),
+            Assign(Identifier(i),Integer(1))
+        ]),
+        Block([
+            Decl(Identifier(i),Type(Boolean),None),
+            Assign(Identifier(i),Boolean(True))
         ])
     )
 ])
 """
 
-# Test Case 8: For Loop
-test_input_8 = """
-for i in 1 .. 5 loop
-    Put(i);
-    for j in i + 1 .. 10 - i loop
-    end loop;
-end loop;
+# Test Case 9: type compatibility
+test_input_9 = """
+var x : Integer := 1;
+var y : Integer := 2;
+var z : Integer;
+x := y + z;
+var a : Boolean := True;
+var b : Boolean := False;
+Put(a and (b or False));
 """
-expected_output_8 = """
+expected_output_9 = """
 Block([
-    ForLoop(Identifier(i),Integer(1),Integer(5),
-        Block([
-            Put(Identifier(i)),
-            ForLoop(Identifier(j),Term([Identifier(i),+,Integer(1)]),Term([Integer(10),-,Identifier(i)]),
-            Block([])
+    Decl(Identifier(x),Type(Integer),Integer(1)),
+    Decl(Identifier(y),Type(Integer),Integer(2)),
+    Decl(Identifier(z),Type(Integer),None),
+    Assign(Identifier(x),Term([Identifier(y),+,Identifier(z)])),
+    Decl(Identifier(a),Type(Boolean),Boolean(True)),
+    Decl(Identifier(b),Type(Boolean),Boolean(False)),
+    Put(And([Identifier(a),Or([Identifier(b),Boolean(False)])]))
+])
+"""
+
+# Test Case 10: type compatibility
+test_input_10 = """
+var b1 : Boolean;
+var b2 : Boolean;
+var b3 : Boolean;
+var i1 : Integer;
+var i2 : Integer;
+var i3 : Integer;
+b1 := (b2 or b3) and i1 /= i2 or i2 mod i3 = 0;
+"""
+expected_output_10 = """
+Block([
+    Decl(Identifier(b1),Type(Boolean),None),
+    Decl(Identifier(b2),Type(Boolean),None),
+    Decl(Identifier(b3),Type(Boolean),None),
+    Decl(Identifier(i1),Type(Integer),None),
+    Decl(Identifier(i2),Type(Integer),None),
+    Decl(Identifier(i3),Type(Integer),None),
+    Assign(Identifier(b1),
+        Or([
+            And([
+                Or([Identifier(b2),Identifier(b3)]),
+                Comparison(Identifier(i1),/=,Identifier(i2))
+            ]),
+            Comparison(
+                Factor([Identifier(i2),mod,Identifier(i3)]),
+                =,
+                Integer(0)
             )
         ])
     )
 ])
 """
 
-# Test Case 9: Empty Program
-test_input_9 = """
-"""
-expected_output_9 = """
-Block([])
-"""
-
-# Test Case 10: Logical Expressions
-test_input_10 = """
-a := True;
-b := False;
-c := a or False;
-d := False or False or a;
-e := b and True;
-f := a and b or c;
-g := a and (b or c); 
-"""
-expected_output_10 = """
-Block([
-    Assign(Identifier(a),Boolean(True)),
-    Assign(Identifier(b),Boolean(False)),
-    Assign(Identifier(c),Or([Identifier(a),Boolean(False)])),
-    Assign(Identifier(d),Or([Boolean(False),Boolean(False),Identifier(a)])),
-    Assign(Identifier(e),And([Identifier(b),Boolean(True)])),
-    Assign(Identifier(f),Or([And([Identifier(a),Identifier(b)]),Identifier(c)])),
-    Assign(Identifier(g),And([Identifier(a),Or([Identifier(b),Identifier(c)])]))
-])
-"""
-
-# Test Case 11: Comparison Expressions
+# Test Case 11: type compatibility
 test_input_11 = """
-a := 1 = 2;
-b := 3 <= 4 and 5;
-c := 6 /= 7;
+var x : Integer;
+var y : Boolean;
+x := 1 + y;
 """
 expected_output_11 = """
-Block([
-    Assign(Identifier(a),Comparison(Integer(1),=,Integer(2))),
-    Assign(Identifier(b),And([Comparison(Integer(3),<=,Integer(4)),Integer(5)])),
-    Assign(Identifier(c),Comparison(Integer(6),/=,Integer(7)))
-])
+Invalid
 """
 
-# Test Case 12: Arithmetic Expressions
+# Test Case 12: type compatibility
 test_input_12 = """
-x := 10 - 5 * 2 mod 4;
-y := (x + 1) * (z - 1);
+var x : Integer;
+var y : Boolean;
+y := x /= 0;
 """
 expected_output_12 = """
 Block([
-    Assign(Identifier(x),
-        Term(
-            [Integer(10),
-            -,
-            Factor([Integer(5),*,Integer(2),mod,Integer(4)])]
-        )
-    ),
-    Assign(Identifier(y),
-        Factor(
-            [Term([Identifier(x),+,Integer(1)]),
-            *,
-            Term([Identifier(z),-,Integer(1)])]
-        )
+    Decl(Identifier(x),Type(Integer),None),
+    Decl(Identifier(y),Type(Boolean),None),
+    Assign(Identifier(y),Comparison(Identifier(x),/=,Integer(0)))
+])
+"""
+
+# Test Case 13: combined
+test_input_13 = """
+var x : Integer;
+if x mod 2 = 0 then
+    Put(1 + x);
+else
+    var x : Boolean := True;
+    Put(x or False);
+end if;
+"""
+expected_output_13 = """
+Block([
+    Decl(Identifier(x),Type(Integer),None),
+    If(Comparison(Factor([Identifier(x),mod,Integer(2)]),=,Integer(0)),
+        Block([
+            Put(Term([Integer(1),+,Identifier(x)]))
+        ]),
+        Block([
+            Decl(Identifier(x),Type(Boolean),Boolean(True)),
+            Put(Or([Identifier(x),Boolean(False)]))
+        ])
+    )
+])
+"""
+
+# Test Case 14: combined
+test_input_14 = """
+var x : Boolean;
+while x loop
+    if x then
+        x := False;
+    else
+        var x : Integer;
+        x := True;
+    end if;
+end loop;
+"""
+expected_output_14 = """
+Invalid
+"""
+
+# Test Case 15: combined
+test_input_15 = """
+var x : Integer;
+var y : Boolean;
+var z : Boolean;
+if (x + 1) > 0 and (y or z) then
+    x := x - 1;
+    if z then
+        var y : Integer;
+    end if;
+    y := False;
+end if;
+"""
+expected_output_15 = """
+Block([
+    Decl(Identifier(x),Type(Integer),None),
+    Decl(Identifier(y),Type(Boolean),None),
+    Decl(Identifier(z),Type(Boolean),None),
+    If(And([
+            Comparison(Term([Identifier(x),+,Integer(1)]),>,Integer(0)),
+            Or([Identifier(y),Identifier(z)])
+            ]),
+        Block([
+            Assign(Identifier(x),Term([Identifier(x),-,Integer(1)])),
+            If(Identifier(z),
+                Block([Decl(Identifier(y),Type(Integer),None)]),
+                None),
+            Assign(Identifier(y),Boolean(False))
+        ]),
+        None
     )
 ])
 """
