@@ -120,56 +120,116 @@ class Parser:
             return self.parse_while_statement()
         elif current_type == 'FOR':
             return self.parse_for_statement()
+        elif current_type == 'VAR':
+            return self.parse_decl_statement()
         else:
             raise RuntimeError(f"Unexpected token: {current_type}")
 
     # More parsing methods as needed
 
+    def parse_decl_statement(self):
+        self.expect("VAR")  #checking for 'var'
+        id_token = self.expect("ID")    # <id>
+        self.expect("COLON")    # :
+        type_token = self.parse_expression()    #checking which type it is
+        if type_token == "INT_TYPE":
+            decl_type = "Integer"
+            self.advance()
+        elif type_token == "BOOL_TYPE":
+            decl_type = "Boolean"
+            self.advance()
+        else:
+            raise RuntimeError("Need INTEGER or BOOLEAN type")
+        current_scope = self.symbol_table[-1]
+        var_name = id_token[1]
+        if var_name in current_scope:   #making sure that the same variable cannot be declared twice in same scope
+            raise RuntimeError("Duplicate variable name")
+        current_scope[var_name] = decl_type
+        expr_node = None
+        if self.current_token()[0] == "ASSIGN":
+            self.advance()
+            expr_tuple = self.parse_expression()
+            expr_node = expr_tuple[0]
+            expr_type = expr_tuple[1]
+            if expr_type != decl_type:
+                raise RuntimeError("Type mismatch in declaration")
+        self.expect("SEMICOLON")
+        id_node = Identifier(var_name)
+        return Decl(id_node, decl_type, expr_node)
+
+
     def parse_assign_statement(self):
         id_token = self.expect("ID")
         self.expect("ASSIGN")
-        expression = self.parse_expression()
+        var_name = id_token[1]
+        expected_type = self.get_var_type(var_name)
+        if expected_type is None:   # checking if variable exists and what the type is
+            raise RuntimeError("Variable assigned before declaration")  # if it doesnt then throw error
+        expr_tuple = self.parse_expression()    #parsing through the expression
+        expr_node = expr_tuple[0]
+        expr_type = expr_tuple[1]
+        if expr_type != expected_type:  #checking if the expression type matches the expected type
+            raise RuntimeError("Type mismatch in assignment")
         self.expect("SEMICOLON")
-        id_node = Identifier(id_token[1])   #Create identifier node and assign that node
-        assign_node = Assign(id_node, expression)
-        return assign_node
+        id_node = Identifier(var_name)
+        return Assign(id_node, expr_node)
 
     def parse_put_statement(self):
         self.expect("PUT")  # checking the format of the put statement Put(expression);
         self.expect("LPAREN")
-        expr_to_put = self.parse_expression()
+        expr_tuple = self.parse_expression()
+        expr_node = expr_tuple[0]
         self.expect("RPAREN")
         self.expect("SEMICOLON")
-        return Put(expr_to_put)
+        return Put(expr_node)
 
     def parse_while_statement(self):
         self.expect("WHILE")
-        cond_expr = self.parse_expression()
+        cond_tuple = self.parse_expression()
+        cond_node = cond_tuple[0]
+        cond_type = cond_tuple[1]
+        if cond_type != 'Boolean':  # making sure that the while statement has a boolean value
+            raise RuntimeError("While condition must be Boolean")
         self.expect("LOOP")
         loop_body = self.parse_block()
         self.expect("END")
         self.expect("LOOP")
         self.expect("SEMICOLON")
-        return WhileLoop(cond_expr, loop_body)  # if it finds all the required elements return the values
+        return WhileLoop(cond_node, loop_body)  # if it finds all the required elements return the values
 
     def parse_for_statement(self):
         self.expect("FOR")  #checking the format of for statements
         id_tok = self.expect("ID")
         self.expect("IN")
-        start_expr = self.parse_expression()
+        start_tuple = self.parse_expression()
+        start_node = start_tuple[0]
+        start_type = start_tuple[1]
+        if start_type != 'Integer': # making sure that the start of for loop is an int
+            raise RuntimeError("For loop start must be Integer")
         self.expect("DOTDOT")
-        end_expr = self.parse_expression()
+        end_tuple = self.parse_expression()
+        end_node = end_tuple[0]
+        end_type = end_tuple[1]
+        if end_type != 'Integer':   #making sure that the end of for loop is int too
+            raise RuntimeError("For loop end must be Integer")
         self.expect("LOOP")
+        self.symbol_table.append({})    #creating a new scope for the iterator
+        self.symbol_table[-1][id_tok[1]] = "Integer"    #declare iterator as an int
         loop_body = self.parse_block()
+        self.symbol_table.pop() #pop the iterator scope
         self.expect("END")
         self.expect("LOOP")
         self.expect("SEMICOLON")
         id_node = Identifier(id_tok[1])
-        return ForLoop(id_node, start_expr, end_expr, loop_body)
+        return ForLoop(id_node, start_node, end_node, loop_body)
 
     def parse_if_statement(self):
         self.expect("IF")
-        condition_expr = self.parse_expression()
+        cond_tuple = self.parse_expression()
+        cond_node = cond_tuple[0]
+        cond_type = cond_tuple[1]
+        if cond_type != 'Boolean':  # make sure that the condition is a boolean
+            raise RuntimeError("If condition must be Boolean")
         self.expect("THEN")
         then_block = self.parse_block()
         else_block = None  # Default else block to None b/c it is optional
@@ -179,7 +239,7 @@ class Parser:
         self.expect("END")
         self.expect("IF")
         self.expect("SEMICOLON")
-        if_node = If(condition_expr, then_block, else_block)
+        if_node = If(cond_node, then_block, else_block)
         return if_node
 
     def parse_expression(self):
